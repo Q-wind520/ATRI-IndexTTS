@@ -4,9 +4,13 @@ from dataclasses import dataclass, field
 @dataclass
 class TTSRequest:
     text: str
-    voice: str = "Atri"
+    voice: str | None = None
     prompt_audio: str | None = None
     prompt_text: str | None = None
+    emo_audio: str | None = None
+    emo_alpha: float | None = None
+    emo_text: str | None = None
+    prompt_index: int = 0
     provider: str = "gitee"
 
 

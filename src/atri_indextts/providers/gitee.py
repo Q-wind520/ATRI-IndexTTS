@@ -1,24 +1,8 @@
 from openai import OpenAI
 
 from ..models import ProviderInfo, TTSRequest, TTSResponse
+from ..voice_loader import get_voice, list_voice_names
 from .base import BaseTTSProvider
-
-_BASE = "https://gitee.com/q_wind520/TTSVoiceRope/raw/master/voice/ATRI-亚托莉"
-
-PROMPT_PRESETS: dict[str, dict[str, str]] = {
-    "Atri": {
-        "prompt_audio_url": f"{_BASE}/いえ、見えてましたよ。みなさんがいるの。わたし、目がいいので.wav",
-        "prompt_text": "いえ、見えてましたよ。みなさんがいるの。わたし、目がいいので",
-    },
-    "Atri-2": {
-        "prompt_audio_url": f"{_BASE}/わたしが夏生さんのために行動するのに、理由が必要でしょうか.wav",
-        "prompt_text": "わたしが夏生さんのために行動するのに、理由が必要でしょうか",
-    },
-    "Atri-3": {
-        "prompt_audio_url": f"{_BASE}/間違いありません。知性の欠片も感じない、ジャカジャカとうるさいだけの音楽です.wav",
-        "prompt_text": "間違いありません。知性の欠片も感じない、ジャカジャカとうるさいだけの音楽です",
-    },
-}
 
 
 class GiteeProvider(BaseTTSProvider):
@@ -39,22 +23,25 @@ class GiteeProvider(BaseTTSProvider):
 
     def synthesize(self, request: TTSRequest) -> TTSResponse:
         self._ensure_client()
+        assert self._client is not None
 
         voice = request.voice
-        preset = PROMPT_PRESETS.get(voice)
+        voice_obj = get_voice(voice) if voice else None
 
         prompt_audio = request.prompt_audio
         prompt_text = request.prompt_text
 
-        if preset:
+        if voice_obj and voice_obj.prompts:
+            idx = min(max(request.prompt_index, 0), len(voice_obj.prompts) - 1)
+            preset = voice_obj.prompts[idx]
             if not prompt_audio:
-                prompt_audio = preset["prompt_audio_url"]
+                prompt_audio = preset.prompt_audio_url
             if not prompt_text:
-                prompt_text = preset["prompt_text"]
+                prompt_text = preset.prompt_text
 
         if not prompt_audio:
             raise ValueError(
-                "请选择声纹预设 (-v Atri / Atri-2 / Atri-3) 或提供 --prompt-audio"
+                "请选择声纹预设 (-v Atri) 或提供 --prompt-audio"
             )
 
         extra_body: dict = {}
@@ -62,6 +49,12 @@ class GiteeProvider(BaseTTSProvider):
             extra_body["prompt_audio_url"] = prompt_audio
         if prompt_text:
             extra_body["prompt_text"] = prompt_text
+        if request.emo_audio:
+            extra_body["emo_audio"] = request.emo_audio
+        if request.emo_alpha is not None:
+            extra_body["emo_alpha"] = request.emo_alpha
+        if request.emo_text:
+            extra_body["emo_text"] = request.emo_text
 
         response = self._client.audio.speech.create(
             model=self.MODEL,
@@ -73,7 +66,7 @@ class GiteeProvider(BaseTTSProvider):
         return TTSResponse(audio=response.content, format="wav")
 
     def list_voices(self) -> list[str]:
-        return list(PROMPT_PRESETS.keys())
+        return list_voice_names()
 
     @property
     def name(self) -> str:
@@ -84,5 +77,5 @@ class GiteeProvider(BaseTTSProvider):
         return ProviderInfo(
             name=self.name,
             base_url=self._base_url,
-            available_voices=list(PROMPT_PRESETS.keys()),
+            available_voices=list_voice_names(),
         )
