@@ -30,8 +30,8 @@ def cli():
 
 @cli.command()
 @click.argument("text")
-@click.option("-p", "--provider", default=None, help="服务商标识 (默认从配置文件读取)")
-@click.option("-v", "--voice", default="Atri", help="语音角色 (默认: Atri)")
+@click.option("-p", "--provider", default=None, help="服务商标识")
+@click.option("-v", "--voice", default=None, help="语音角色 (可用: indextts voices 查看)")
 @click.option("-o", "--output", default=None, help="输出文件路径 (默认: temp/output/indextts.wav)")
 @click.option("--prompt-audio", default=None, help="声纹参考音频 URL")
 @click.option("--prompt-text", default=None, help="声纹参考文本")
@@ -41,7 +41,9 @@ def tts(text, provider, voice, output, prompt_audio, prompt_text):
     config = load_config()
 
     if provider is None:
-        provider = config.get("default_provider", "gitee")
+        provider = config.get("default_provider")
+    if provider is None:
+        raise click.UsageError("请指定服务商：-p gitee，或设置默认服务商：indextts config set default_provider gitee")
 
     prov = _resolve_provider(provider)
     _require_api_key(prov)
@@ -57,7 +59,10 @@ def tts(text, provider, voice, output, prompt_audio, prompt_text):
         provider=provider,
     )
 
-    response = prov.synthesize(request)
+    try:
+        response = prov.synthesize(request)
+    except ValueError as e:
+        raise click.UsageError(str(e)) from e
 
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -74,7 +79,9 @@ def voices(provider):
     config = load_config()
 
     if provider is None:
-        provider = config.get("default_provider", "gitee")
+        provider = config.get("default_provider")
+    if provider is None:
+        raise click.UsageError("请指定服务商：-p gitee，或设置默认服务商：indextts config set default_provider gitee")
 
     prov = _resolve_provider(provider)
     voice_list = prov.list_voices()
@@ -90,7 +97,7 @@ def providers():
     load_env()
     config = load_config()
 
-    default = config.get("default_provider", "gitee")
+    default = config.get("default_provider")
     click.echo("已配置服务商:")
 
     for name, details in config.get("providers", {}).items():
@@ -115,7 +122,11 @@ def config_show():
         key = get_api_key(provider)
         api_keys[provider] = "***" if key else "(未设置)"
 
-    click.echo(f"default_provider: {config_data.get('default_provider', 'gitee')}")
+    default = config_data.get("default_provider")
+    if default:
+        click.echo(f"default_provider: {default}")
+    else:
+        click.echo("default_provider: (未设置)")
     click.echo("providers:")
     for name, details in config_data.get("providers", {}).items():
         click.echo(f"  {name}:")

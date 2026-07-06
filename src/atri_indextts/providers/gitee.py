@@ -52,6 +52,11 @@ class GiteeProvider(BaseTTSProvider):
             if not prompt_text:
                 prompt_text = preset["prompt_text"]
 
+        if not prompt_audio:
+            raise ValueError(
+                "请选择声纹预设 (-v Atri / Atri-2 / Atri-3) 或提供 --prompt-audio"
+            )
+
         extra_body: dict = {}
         if prompt_audio:
             extra_body["prompt_audio_url"] = prompt_audio

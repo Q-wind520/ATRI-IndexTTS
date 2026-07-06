@@ -6,7 +6,6 @@ APP_NAME = "indextts"
 
 CONFIG_FILENAME = "config.json"
 DEFAULT_CONFIG: dict = {
-    "default_provider": "gitee",
     "providers": {
         "gitee": {
             "base_url": "https://ai.gitee.com/v1",

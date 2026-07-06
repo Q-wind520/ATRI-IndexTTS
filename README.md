@@ -29,17 +29,17 @@ indextts config show
 ## 使用
 
 ```powershell
-# TTS 合成（默认使用 Atri 声纹）
-indextts tts "こんにちは"
+# 指定服务商和声纹预设进行合成
+indextts tts "你好" -p gitee -v Atri
 
-# 指定声纹预设
-indextts tts "こんにちは" -v Atri-2
+# 其他声纹预设
+indextts tts "你好" -p gitee -v Atri-2
 
-# 自定义声纹参考
-indextts tts "こんにちは" --prompt-audio "https://..." --prompt-text "参考文本"
+# 自定义声纹参考（覆盖预设）
+indextts tts "你好" -p gitee --prompt-audio "https://..." --prompt-text "参考文本"
 
-# 查看可用语音
-indextts voices
+# 查看可用声纹预设
+indextts voices -p gitee
 
 # 查看已配置服务商
 indextts providers
@@ -51,13 +51,13 @@ indextts providers
 
 目前 `gitee` 服务商内置 3 组 ATRI 声纹预设：
 
-| 语音角色 | 说明 |
-|---------|------|
-| `Atri` (默认) | `いえ、見えてましたよ。みなさんがいるの。わたし、目がいいので` |
+| 语音角色 | 参考文本 |
+|---------|---------|
+| `Atri` | `いえ、見えてましたよ。みなさんがいるの。わたし、目がいいので` |
 | `Atri-2` | `わたしが夏生さんのために行動するのに、理由が必要でしょうか` |
 | `Atri-3` | `間違いありません。知性の欠片も感じない、ジャカジャカとうるさいだけの音楽です` |
 
-未指定 `--prompt-audio`/`--prompt-text` 时自动使用所选预设的声纹参考。
+选择预设后自动填入对应的声纹参考，也可通过 `--prompt-audio`/`--prompt-text` 覆盖。
 
 ## 扩展服务商
 
@@ -65,10 +65,3 @@ indextts providers
 2. 在 `src/atri_indextts/providers/__init__.py` 注册导出
 3. 在 `src/atri_indextts/config.py` 添加 `ENV_KEY_MAP` 和 `DEFAULT_CONFIG`
 4. 在 `src/atri_indextts/cli.py` 的 `_resolve_provider()` 添加分支
-
-## 技术栈
-
-- **CLI**: Click
-- **API 客户端**: OpenAI (HTTP)
-- **配置**: .env (敏感) + JSON (非敏感)
-- **打包**: uv + pyproject.toml
