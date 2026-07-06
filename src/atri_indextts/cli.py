@@ -5,7 +5,7 @@ import click
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from .config import DEFAULT_CONFIG, get_api_key, load_config, load_env, save_config
+from .config import get_api_key, load_config, load_env, save_config
 from .models import TTSRequest
 from .providers import GiteeProvider
 
@@ -13,14 +13,14 @@ from .providers import GiteeProvider
 def _resolve_provider(name: str):
     if name == "gitee":
         api_key = get_api_key("gitee")
-        if not api_key:
-            raise click.UsageError(
-                "未设置 GITEE_AI_API_KEY，请在 .env 中配置"
-            )
         config = load_config()
         base_url = config.get("providers", {}).get("gitee", {}).get("base_url", GiteeProvider.BASE_URL)
         return GiteeProvider(api_key=api_key, base_url=base_url)
     raise click.UsageError(f"未知服务商: {name}")
+
+def _require_api_key(provider):
+    if not provider._api_key:
+        raise click.UsageError("未设置 GITEE_AI_API_KEY，请在 .env 中配置")
 
 
 @click.group()
@@ -44,6 +44,7 @@ def tts(text, provider, voice, output, prompt_audio, prompt_text):
         provider = config.get("default_provider", "gitee")
 
     prov = _resolve_provider(provider)
+    _require_api_key(prov)
 
     if output is None:
         output = "temp/output/indextts.wav"
