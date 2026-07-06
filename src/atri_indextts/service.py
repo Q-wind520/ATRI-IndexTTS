@@ -2,7 +2,7 @@ from pathlib import Path
 
 from .config import get_api_key, load_config, load_env, save_config
 from .models import TTSRequest
-from .providers import GiteeProvider
+from .providers import AstraFlowProvider, GiteeProvider
 from .voice_loader import load_voices
 
 
@@ -20,9 +20,13 @@ class TTSService:
             base_url = self._config.get("providers", {}).get("gitee", {}).get(
                 "base_url", GiteeProvider.BASE_URL
             )
-            if not api_key:
-                raise ValueError("未设置 GITEE_AI_API_KEY，请在 .env 中配置")
             return GiteeProvider(api_key=api_key, base_url=base_url)
+        if name == "astraflow":
+            api_key = get_api_key("astraflow")
+            base_url = self._config.get("providers", {}).get("astraflow", {}).get(
+                "base_url", AstraFlowProvider.BASE_URL
+            )
+            return AstraFlowProvider(api_key=api_key, base_url=base_url)
         raise ValueError(f"未知服务商: {name}")
 
     def _get_provider_name(self, provider: str | None = None) -> str:

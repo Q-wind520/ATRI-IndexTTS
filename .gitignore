@@ -1,5 +1,6 @@
 # 临时输出
 /temp
+src/atri_indextts/audio/temp/
 
 # 敏感配置
 .env

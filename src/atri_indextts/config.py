@@ -10,11 +10,15 @@ DEFAULT_CONFIG: dict = {
         "gitee": {
             "base_url": "https://ai.gitee.com/v1",
         },
+        "astraflow": {
+            "base_url": "https://api.modelverse.cn/v1",
+        },
     },
 }
 
 ENV_KEY_MAP = {
     "gitee": "GITEE_AI_API_KEY",
+    "astraflow": "MODELVERSE_API_KEY",
 }
 
 
