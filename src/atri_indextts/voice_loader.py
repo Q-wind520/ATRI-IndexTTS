@@ -16,9 +16,10 @@ class VoicePrompt:
 
 
 class Voice:
-    def __init__(self, name: str, prompts: list[VoicePrompt]):
+    def __init__(self, name: str, prompts: list[VoicePrompt], description: str | None = None):
         self.name = name
         self.prompts = prompts
+        self.description = description
 
     @property
     def prompt_count(self) -> int:
@@ -69,7 +70,7 @@ def load_voices() -> list[Voice]:
     result: list[Voice] = []
     for v in _load_data():
         prompts = _build_prompts(v["name"], v.get("prompts", []))
-        result.append(Voice(name=v["name"], prompts=prompts))
+        result.append(Voice(name=v["name"], prompts=prompts, description=v.get("description")))
     return result
 
 
@@ -77,7 +78,7 @@ def get_voice(name: str) -> Voice | None:
     for v in _load_data():
         if v["name"] == name:
             prompts = _build_prompts(v["name"], v.get("prompts", []))
-            return Voice(name=v["name"], prompts=prompts)
+            return Voice(name=v["name"], prompts=prompts, description=v.get("description"))
     return None
 
 
@@ -92,7 +93,7 @@ def add_voice_to_file(
     prompt_text: str,
     description: str | None = None,
 ) -> bool:
-    with open(_VOICES_PATH, "r", encoding="utf-8") as f:
+    with open(_VOICES_PATH, encoding="utf-8") as f:
         data = json.load(f)
 
     voices: list[dict] = data.get("voices", [])

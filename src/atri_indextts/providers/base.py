@@ -17,3 +17,7 @@ class BaseTTSProvider(ABC):
     @property
     @abstractmethod
     def info(self) -> ProviderInfo: ...
+
+    @property
+    def supported_formats(self) -> list[str]:
+        return ["wav"]

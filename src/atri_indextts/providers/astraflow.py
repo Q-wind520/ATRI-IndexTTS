@@ -46,7 +46,6 @@ class AstraFlowProvider(BaseTTSProvider):
         if not self._api_key:
             raise ValueError("未设置 MODELVERSE_API_KEY，请在 .env 中配置")
 
-        spk_audio_source: str | None = None
         spk_audio_path: Path | None = None
         emo_audio_path: Path | None = None
 

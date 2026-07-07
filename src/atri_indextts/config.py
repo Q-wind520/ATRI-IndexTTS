@@ -24,15 +24,11 @@ ENV_KEY_MAP = {
 
 
 def _config_dir() -> Path:
-    return _Path(Path.home(), ".config", APP_NAME)
-
-
-def _Path(*args: str | Path) -> Path:
-    return Path(*args)
+    return Path(Path.home(), ".config", APP_NAME)
 
 
 def load_env(path: str = ".env") -> None:
-    env_file = _Path(path)
+    env_file = Path(path)
     if not env_file.exists():
         return
     for line in env_file.read_text(encoding="utf-8").splitlines():

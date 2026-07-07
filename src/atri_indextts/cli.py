@@ -28,28 +28,52 @@ def cli():
 @click.option("--emo-text", default=None, help="文本控制语气参考语句")
 @click.option("--prompt-index", default=0, type=int, help="参考声纹编号 (可用: indextts voices 查看)")
 @click.option("--stream", is_flag=True, default=False, help="流式逐句合成 (长文本适用)")
-def tts(text, provider, voice, output, prompt_audio, prompt_text, emo_audio, emo_alpha, emo_text, prompt_index, stream):
+@click.option("--format", "fmt", default="wav", help="输出音频格式 (默认: wav)")
+def tts(
+    text,
+    provider,
+    voice,
+    output,
+    prompt_audio,
+    prompt_text,
+    emo_audio,
+    emo_alpha,
+    emo_text,
+    prompt_index,
+    stream,
+    fmt,
+):
     """文本转语音合成"""
     service = TTSService()
     try:
         if stream:
+            sentences = service._split_sentences(text)
             output_dir = str(Path(output).parent) if output else None
-            results = service.synthesize_stream(
-                text=text,
-                provider=provider,
-                voice=voice,
-                output_dir=output_dir,
-                prompt_audio=prompt_audio,
-                prompt_text=prompt_text,
-                emo_audio=emo_audio,
-                emo_alpha=emo_alpha,
-                emo_text=emo_text,
-                prompt_index=prompt_index,
-            )
+            results: list[Path] = []
+            with click.progressbar(
+                service.synthesize_stream(
+                    text=text,
+                    provider=provider,
+                    voice=voice,
+                    output_dir=output_dir,
+                    prompt_audio=prompt_audio,
+                    prompt_text=prompt_text,
+                    emo_audio=emo_audio,
+                    emo_alpha=emo_alpha,
+                    emo_text=emo_text,
+                    prompt_index=prompt_index,
+                    fmt=fmt,
+                ),
+                length=len(sentences),
+                label="正在合成",
+            ) as bar:
+                for p in bar:
+                    results.append(p)
             for i, p in enumerate(results):
                 click.echo(f"[{i + 1}/{len(results)}] {p}")
             click.echo(f"语音文件已生成，共 {len(results)} 句")
         else:
+            click.echo("正在合成中...")
             out_path = service.synthesize(
                 text=text,
                 provider=provider,
@@ -61,6 +85,7 @@ def tts(text, provider, voice, output, prompt_audio, prompt_text, emo_audio, emo
                 emo_alpha=emo_alpha,
                 emo_text=emo_text,
                 prompt_index=prompt_index,
+                fmt=fmt,
             )
             click.echo(f"语音文件已生成: {out_path}")
     except ValueError as e:

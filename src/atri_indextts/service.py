@@ -1,11 +1,11 @@
-from pathlib import Path
 import re
+from collections.abc import Generator
+from pathlib import Path
 
 from .config import get_api_key, load_config, load_env, reload_config, save_config
 from .models import TTSRequest
 from .providers import get_provider_class
 from .voice_loader import load_voices
-
 
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？.!?；;])\s*")
 
@@ -36,12 +36,12 @@ class TTSService:
             )
         return name
 
-    def _get_output_path(self, output: str | None = None) -> str:
+    def _get_output_path(self, output: str | None = None, fmt: str = "wav") -> str:
         if output is not None:
             return output
         return str(
             Path(self._config.get("output_dir", "temp/output"))
-            / "indextts.wav"
+            / f"indextts.{fmt}"
         )
 
     @staticmethod
@@ -60,6 +60,7 @@ class TTSService:
         emo_alpha: float | None = None,
         emo_text: str | None = None,
         prompt_index: int = 0,
+        fmt: str = "wav",
     ) -> TTSRequest:
         return TTSRequest(
             text=text,
@@ -71,6 +72,7 @@ class TTSService:
             emo_text=emo_text,
             prompt_index=prompt_index,
             provider=provider_name,
+            format=fmt,
         )
 
     def synthesize(
@@ -85,11 +87,17 @@ class TTSService:
         emo_alpha: float | None = None,
         emo_text: str | None = None,
         prompt_index: int = 0,
+        fmt: str = "wav",
     ) -> Path:
         provider_name = self._get_provider_name(provider)
         prov = self._resolve_provider(provider_name)
 
-        output = self._get_output_path(output)
+        if fmt not in prov.supported_formats:
+            raise ValueError(
+                f"服务商 '{provider_name}' 不支持格式 '{fmt}'，支持: {', '.join(prov.supported_formats)}"
+            )
+
+        output = self._get_output_path(output, fmt=fmt)
 
         request = self._build_request(
             text=text,
@@ -101,6 +109,7 @@ class TTSService:
             emo_alpha=emo_alpha,
             emo_text=emo_text,
             prompt_index=prompt_index,
+            fmt=fmt,
         )
 
         response = prov.synthesize(request)
@@ -123,9 +132,15 @@ class TTSService:
         emo_alpha: float | None = None,
         emo_text: str | None = None,
         prompt_index: int = 0,
-    ) -> list[Path]:
+        fmt: str = "wav",
+    ) -> Generator[Path, None, None]:
         provider_name = self._get_provider_name(provider)
         prov = self._resolve_provider(provider_name)
+
+        if fmt not in prov.supported_formats:
+            raise ValueError(
+                f"服务商 '{provider_name}' 不支持格式 '{fmt}'，支持: {', '.join(prov.supported_formats)}"
+            )
 
         if output_dir is None:
             output_dir = self._config.get("output_dir", "temp/output")
@@ -135,8 +150,6 @@ class TTSService:
         if not sentences:
             sentences = [text]
 
-        result: list[Path] = []
-        total = len(sentences)
         for i, sentence in enumerate(sentences):
             request = self._build_request(
                 text=sentence,
@@ -148,19 +161,17 @@ class TTSService:
                 emo_alpha=emo_alpha,
                 emo_text=emo_text,
                 prompt_index=prompt_index,
+                fmt=fmt,
             )
 
             response = prov.synthesize(request)
 
-            out_path = out_dir / f"chunk_{i:03d}.wav"
+            out_path = out_dir / f"chunk_{i:03d}.{fmt}"
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_bytes(response.audio)
-            result.append(out_path)
-
-        return result
+            yield out_path
 
     def list_voices(self):
-        from .voice_loader import Voice
         return load_voices()
 
     def list_providers(self) -> dict:

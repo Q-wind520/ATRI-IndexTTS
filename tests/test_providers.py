@@ -72,7 +72,7 @@ class TestAstraFlowProvider:
             prov.synthesize(TTSRequest(text="test"))
 
     def test_synthesize_without_prompt_audio_raises(self, mocker):
-        mock_ensure = mocker.patch(
+        mocker.patch(
             "atri_indextts.providers.astraflow.ensure_local_audio",
             return_value=None,
         )

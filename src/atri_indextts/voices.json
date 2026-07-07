@@ -22,6 +22,42 @@
           "prompt_text": "間違いありません。知性の欠片も感じない、ジャカジャカとうるさいだけの音楽です"
         }
       ]
+    },
+    {
+      "name": "FemaleA",
+      "description": "温柔女声 (占位 — 替换 prompt_audio_url 和 prompt_text)",
+      "prompts": [
+        {
+          "label": "标准",
+          "description": "亲切自然的女声",
+          "prompt_audio_url": "https://example.com/voices/female_a.wav",
+          "prompt_text": "你好，今天天气真不错。"
+        }
+      ]
+    },
+    {
+      "name": "MaleA",
+      "description": "沉稳男声 (占位 — 替换 prompt_audio_url 和 prompt_text)",
+      "prompts": [
+        {
+          "label": "标准",
+          "description": "低沉稳重的男声",
+          "prompt_audio_url": "https://example.com/voices/male_a.wav",
+          "prompt_text": "大家好，欢迎收听本期节目。"
+        }
+      ]
+    },
+    {
+      "name": "ChildA",
+      "description": "活泼童声 (占位 — 替换 prompt_audio_url 和 prompt_text)",
+      "prompts": [
+        {
+          "label": "标准",
+          "description": "活泼可爱的童声",
+          "prompt_audio_url": "https://example.com/voices/child_a.wav",
+          "prompt_text": "今天我们去公园玩吧！"
+        }
+      ]
     }
   ]
 }

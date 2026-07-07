@@ -13,8 +13,9 @@ class TestGetProviderName:
 
     def test_from_default_config(self, tmp_path, monkeypatch):
         monkeypatch.setattr("atri_indextts.config._config_dir", lambda: tmp_path)
-        from atri_indextts.config import CONFIG_FILENAME, reload_config
         import json
+
+        from atri_indextts.config import CONFIG_FILENAME, reload_config
         (tmp_path / CONFIG_FILENAME).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / CONFIG_FILENAME).write_text(
             json.dumps({"default_provider": "astraflow", "providers": {}}),
@@ -53,6 +54,7 @@ class TestSynthesize:
         monkeypatch.setattr("atri_indextts.config._config_dir", lambda: Path("nonexistent"))
         mock_provider = mocker.MagicMock()
         mock_provider.synthesize.return_value = mocker.MagicMock(audio=b"fake-audio", format="wav")
+        mock_provider.supported_formats = ["wav"]
         mocker.patch.object(TTSService, "_resolve_provider", return_value=mock_provider)
 
         service = TTSService()
@@ -67,6 +69,7 @@ class TestSynthesize:
         monkeypatch.setattr("atri_indextts.config._config_dir", lambda: Path("nonexistent"))
         mock_provider = mocker.MagicMock()
         mock_provider.synthesize.return_value = mocker.MagicMock(audio=b"fake-audio", format="wav")
+        mock_provider.supported_formats = ["wav"]
         mocker.patch.object(TTSService, "_resolve_provider", return_value=mock_provider)
 
         service = TTSService()

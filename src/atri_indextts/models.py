@@ -12,6 +12,7 @@ class TTSRequest:
     emo_text: str | None = None
     prompt_index: int = 0
     provider: str = "gitee"
+    format: str = "wav"
 
 
 @dataclass

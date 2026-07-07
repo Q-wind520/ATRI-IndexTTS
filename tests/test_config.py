@@ -1,8 +1,5 @@
 import json
 import os
-from pathlib import Path
-
-import pytest
 
 from atri_indextts.config import (
     DEFAULT_CONFIG,
