@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from .config import get_api_key, load_config, load_env, save_config
+from .config import get_api_key, load_config, load_env, reload_config, save_config
 from .models import TTSRequest
 from .providers import AstraFlowProvider, GiteeProvider
 from .voice_loader import load_voices
@@ -118,3 +118,4 @@ class TTSService:
                 f"未知配置项: {key}，支持: default_provider, <provider>.base_url"
             )
         save_config(config_data)
+        reload_config()

@@ -19,7 +19,7 @@ class GiteeProvider(BaseTTSProvider):
             return
         if not self._api_key:
             raise ValueError("未设置 GITEE_AI_API_KEY，请在 .env 中配置")
-        self._client = OpenAI(base_url=self._base_url, api_key=self._api_key)
+        self._client = OpenAI(base_url=self._base_url, api_key=self._api_key, timeout=600.0, max_retries=2)
 
     def synthesize(self, request: TTSRequest) -> TTSResponse:
         self._ensure_client()

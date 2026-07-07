@@ -3,12 +3,13 @@ from hashlib import md5
 from pathlib import Path
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 from ..models import ProviderInfo, TTSRequest, TTSResponse
-from ..voice_loader import AUDIO_DIR, get_voice, list_voice_names
+from ..utils.audio_cache import ensure_local_audio
+from ..voice_loader import get_voice, list_voice_names
 from .base import BaseTTSProvider
-
-_AUDIO_TEMP_DIR = AUDIO_DIR / "temp"
 
 
 class AstraFlowProvider(BaseTTSProvider):
@@ -18,29 +19,18 @@ class AstraFlowProvider(BaseTTSProvider):
     def __init__(self, api_key: str | None = None, base_url: str = BASE_URL):
         self._api_key = api_key
         self._base_url = base_url
+        self._session = requests.Session()
+        retries = Retry(
+            total=3,
+            backoff_factor=0.5,
+            status_forcelist=[500, 502, 503, 504],
+        )
+        self._session.mount("https://", HTTPAdapter(max_retries=retries))
+        self._session.mount("http://", HTTPAdapter(max_retries=retries))
 
     @property
     def _auth_header(self) -> dict:
         return {"Authorization": f"Bearer {self._api_key}"}
-
-    @staticmethod
-    def _ensure_local_audio(source: str, cache_name: str | None = None) -> Path:
-        if source.startswith(("http://", "https://")):
-            if cache_name:
-                local = _AUDIO_TEMP_DIR / cache_name
-            else:
-                url_hash = md5(source.encode()).hexdigest()[:16]
-                local = _AUDIO_TEMP_DIR / f"url_{url_hash}.wav"
-
-            if not local.exists():
-                local.parent.mkdir(parents=True, exist_ok=True)
-                resp = requests.get(source)
-                resp.raise_for_status()
-                local.write_bytes(resp.content)
-
-            return local
-
-        return Path(source)
 
     @staticmethod
     def _infer_emo_control_method(request: TTSRequest) -> int:
@@ -67,12 +57,12 @@ class AstraFlowProvider(BaseTTSProvider):
                 spk_audio_path = prompt.local_path
             else:
                 cache_name = f"{request.voice}_{idx}.wav"
-                spk_audio_path = self._ensure_local_audio(
+                spk_audio_path = ensure_local_audio(
                     prompt.prompt_audio_url, cache_name
                 )
         elif request.prompt_audio:
             cache_name = f"prompt_{md5(request.prompt_audio.encode()).hexdigest()[:16]}.wav"
-            spk_audio_path = self._ensure_local_audio(
+            spk_audio_path = ensure_local_audio(
                 request.prompt_audio, cache_name
             )
 
@@ -83,7 +73,7 @@ class AstraFlowProvider(BaseTTSProvider):
 
         if request.emo_audio:
             cache_name = f"emo_{md5(request.emo_audio.encode()).hexdigest()[:16]}.wav"
-            emo_audio_path = self._ensure_local_audio(
+            emo_audio_path = ensure_local_audio(
                 request.emo_audio, cache_name
             )
 
@@ -104,30 +94,30 @@ class AstraFlowProvider(BaseTTSProvider):
             "payload": (None, json.dumps(payload)),
         }
 
+        emo_file = None
         with open(spk_audio_path, "rb") as f:
             files_payload["spk_audio_file"] = (
                 spk_audio_path.name,
                 f,
                 "audio/wav",
             )
-            if emo_audio_path:
-                with open(emo_audio_path, "rb") as ef:
+            try:
+                if emo_audio_path:
+                    emo_file = open(emo_audio_path, "rb")
                     files_payload["emo_audio_file"] = (
                         emo_audio_path.name,
-                        ef,
+                        emo_file,
                         "audio/wav",
                     )
-                    resp = requests.post(
-                        f"{self._base_url}/audio/infer",
-                        headers=self._auth_header,
-                        files=files_payload,
-                    )
-            else:
-                resp = requests.post(
+                resp = self._session.post(
                     f"{self._base_url}/audio/infer",
                     headers=self._auth_header,
                     files=files_payload,
+                    timeout=600,
                 )
+            finally:
+                if emo_file:
+                    emo_file.close()
 
         if not resp.ok:
             try:
