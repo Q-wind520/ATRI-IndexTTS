@@ -1,9 +1,13 @@
 from pathlib import Path
+import re
 
 from .config import get_api_key, load_config, load_env, reload_config, save_config
 from .models import TTSRequest
-from .providers import AstraFlowProvider, GiteeProvider
+from .providers import get_provider_class
 from .voice_loader import load_voices
+
+
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？.!?；;])\s*")
 
 
 class TTSService:
@@ -15,19 +19,12 @@ class TTSService:
         return load_config()
 
     def _resolve_provider(self, name: str):
-        if name == "gitee":
-            api_key = get_api_key("gitee")
-            base_url = self._config.get("providers", {}).get("gitee", {}).get(
-                "base_url", GiteeProvider.BASE_URL
-            )
-            return GiteeProvider(api_key=api_key, base_url=base_url)
-        if name == "astraflow":
-            api_key = get_api_key("astraflow")
-            base_url = self._config.get("providers", {}).get("astraflow", {}).get(
-                "base_url", AstraFlowProvider.BASE_URL
-            )
-            return AstraFlowProvider(api_key=api_key, base_url=base_url)
-        raise ValueError(f"未知服务商: {name}")
+        cls = get_provider_class(name)
+        api_key = get_api_key(name)
+        base_url = self._config.get("providers", {}).get(name, {}).get(
+            "base_url", cls.BASE_URL
+        )
+        return cls(api_key=api_key, base_url=base_url)
 
     def _get_provider_name(self, provider: str | None = None) -> str:
         if provider:
@@ -38,6 +35,43 @@ class TTSService:
                 "请指定服务商：-p gitee，或设置默认服务商：indextts config set default_provider gitee"
             )
         return name
+
+    def _get_output_path(self, output: str | None = None) -> str:
+        if output is not None:
+            return output
+        return str(
+            Path(self._config.get("output_dir", "temp/output"))
+            / "indextts.wav"
+        )
+
+    @staticmethod
+    def _split_sentences(text: str) -> list[str]:
+        parts = _SENTENCE_SPLIT_RE.split(text)
+        return [p.strip() for p in parts if p.strip()]
+
+    def _build_request(
+        self,
+        text: str,
+        provider_name: str,
+        voice: str | None = None,
+        prompt_audio: str | None = None,
+        prompt_text: str | None = None,
+        emo_audio: str | None = None,
+        emo_alpha: float | None = None,
+        emo_text: str | None = None,
+        prompt_index: int = 0,
+    ) -> TTSRequest:
+        return TTSRequest(
+            text=text,
+            voice=voice,
+            prompt_audio=prompt_audio,
+            prompt_text=prompt_text,
+            emo_audio=emo_audio,
+            emo_alpha=emo_alpha,
+            emo_text=emo_text,
+            prompt_index=prompt_index,
+            provider=provider_name,
+        )
 
     def synthesize(
         self,
@@ -55,11 +89,11 @@ class TTSService:
         provider_name = self._get_provider_name(provider)
         prov = self._resolve_provider(provider_name)
 
-        if output is None:
-            output = "temp/output/indextts.wav"
+        output = self._get_output_path(output)
 
-        request = TTSRequest(
+        request = self._build_request(
             text=text,
+            provider_name=provider_name,
             voice=voice,
             prompt_audio=prompt_audio,
             prompt_text=prompt_text,
@@ -67,7 +101,6 @@ class TTSService:
             emo_alpha=emo_alpha,
             emo_text=emo_text,
             prompt_index=prompt_index,
-            provider=provider_name,
         )
 
         response = prov.synthesize(request)
@@ -77,6 +110,54 @@ class TTSService:
         out_path.write_bytes(response.audio)
 
         return out_path
+
+    def synthesize_stream(
+        self,
+        text: str,
+        provider: str | None = None,
+        voice: str | None = None,
+        output_dir: str | None = None,
+        prompt_audio: str | None = None,
+        prompt_text: str | None = None,
+        emo_audio: str | None = None,
+        emo_alpha: float | None = None,
+        emo_text: str | None = None,
+        prompt_index: int = 0,
+    ) -> list[Path]:
+        provider_name = self._get_provider_name(provider)
+        prov = self._resolve_provider(provider_name)
+
+        if output_dir is None:
+            output_dir = self._config.get("output_dir", "temp/output")
+        out_dir = Path(output_dir)
+
+        sentences = self._split_sentences(text)
+        if not sentences:
+            sentences = [text]
+
+        result: list[Path] = []
+        total = len(sentences)
+        for i, sentence in enumerate(sentences):
+            request = self._build_request(
+                text=sentence,
+                provider_name=provider_name,
+                voice=voice,
+                prompt_audio=prompt_audio,
+                prompt_text=prompt_text,
+                emo_audio=emo_audio,
+                emo_alpha=emo_alpha,
+                emo_text=emo_text,
+                prompt_index=prompt_index,
+            )
+
+            response = prov.synthesize(request)
+
+            out_path = out_dir / f"chunk_{i:03d}.wav"
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_bytes(response.audio)
+            result.append(out_path)
+
+        return result
 
     def list_voices(self):
         from .voice_loader import Voice
@@ -108,6 +189,8 @@ class TTSService:
         config_data = load_config()
         if key == "default_provider":
             config_data["default_provider"] = value
+        elif key == "output_dir":
+            config_data["output_dir"] = value
         elif "." in key:
             provider_name, field = key.split(".", 1)
             if provider_name not in config_data.get("providers", {}):
@@ -115,7 +198,7 @@ class TTSService:
             config_data["providers"][provider_name][field] = value
         else:
             raise ValueError(
-                f"未知配置项: {key}，支持: default_provider, <provider>.base_url"
+                f"未知配置项: {key}，支持: default_provider, output_dir, <provider>.base_url"
             )
         save_config(config_data)
         reload_config()

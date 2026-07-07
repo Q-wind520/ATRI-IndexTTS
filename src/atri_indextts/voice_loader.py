@@ -3,6 +3,7 @@ from pathlib import Path
 
 _VOICES_PATH = Path(__file__).parent / "voices.json"
 AUDIO_DIR = Path(__file__).parent / "audio"
+_cached_data: list[dict] | None = None
 
 
 class VoicePrompt:
@@ -36,9 +37,18 @@ def _resolve_prompt_audio(name: str, index: int) -> Path | None:
 
 
 def _load_data() -> list[dict]:
+    global _cached_data
+    if _cached_data is not None:
+        return _cached_data
     with open(_VOICES_PATH, encoding="utf-8") as f:
         data = json.load(f)
-    return data.get("voices", [])
+    _cached_data = data.get("voices", [])
+    return _cached_data
+
+
+def clear_voice_cache() -> None:
+    global _cached_data
+    _cached_data = None
 
 
 def _build_prompts(name: str, prompts_data: list[dict]) -> list[VoicePrompt]:
@@ -73,3 +83,41 @@ def get_voice(name: str) -> Voice | None:
 
 def list_voice_names() -> list[str]:
     return [v["name"] for v in _load_data()]
+
+
+def add_voice_to_file(
+    name: str,
+    label: str,
+    prompt_audio_url: str,
+    prompt_text: str,
+    description: str | None = None,
+) -> bool:
+    with open(_VOICES_PATH, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    voices: list[dict] = data.get("voices", [])
+
+    new_prompt: dict = {
+        "label": label,
+        "prompt_audio_url": prompt_audio_url,
+        "prompt_text": prompt_text,
+    }
+    if description is not None:
+        new_prompt["description"] = description
+
+    for voice in voices:
+        if voice.get("name") == name:
+            voice.setdefault("prompts", []).append(new_prompt)
+            break
+    else:
+        voices.append({
+            "name": name,
+            "prompts": [new_prompt],
+        })
+
+    data["voices"] = voices
+    with open(_VOICES_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    clear_voice_cache()
+    return True

@@ -3,8 +3,10 @@ from openai import OpenAI
 from ..models import ProviderInfo, TTSRequest, TTSResponse
 from ..voice_loader import get_voice, list_voice_names
 from .base import BaseTTSProvider
+from .registry import register
 
 
+@register("gitee")
 class GiteeProvider(BaseTTSProvider):
     BASE_URL = "https://ai.gitee.com/v1"
     MODEL = "IndexTTS-2"

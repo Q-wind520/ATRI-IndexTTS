@@ -14,6 +14,7 @@ DEFAULT_CONFIG: dict = {
             "base_url": "https://api.modelverse.cn/v1",
         },
     },
+    "output_dir": "temp/output",
 }
 
 ENV_KEY_MAP = {

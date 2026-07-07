@@ -10,8 +10,10 @@ from ..models import ProviderInfo, TTSRequest, TTSResponse
 from ..utils.audio_cache import ensure_local_audio
 from ..voice_loader import get_voice, list_voice_names
 from .base import BaseTTSProvider
+from .registry import register
 
 
+@register("astraflow")
 class AstraFlowProvider(BaseTTSProvider):
     BASE_URL = "https://api.modelverse.cn/v1"
     MODEL = "IndexTeam/IndexTTS-2"

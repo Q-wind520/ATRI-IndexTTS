@@ -12,27 +12,34 @@
 
 ```
 src/atri_indextts/
-├── cli.py              # Click CLI entry point (tts, voices, providers, config)
-├── config.py           # .env loader + ~/.config/indextts/config.json manager
+├── cli.py              # Click CLI entry point (tts, voices, providers, config, voice add)
+├── config.py           # .env loader + ~/.config/indextts/config.json manager (with memory cache)
 ├── models.py           # TTSRequest, TTSResponse, ProviderInfo dataclasses
+├── service.py          # TTSService: orchestration layer (resolve → synthesize)
+├── voice_loader.py     # Voice preset loader from voices.json (with memory cache)
+├── voices.json         # Voice preset definitions (Atri with 3 tones)
 ├── providers/
 │   ├── base.py         # Abstract base class (BaseTTSProvider)
-│   └── gitee.py        # Gitee AI implementation (OpenAI-compatible API)
-└── utils/audio.py      # Audio file save utility
+│   ├── registry.py     # Decorator-based provider registry (@register + get_provider_class)
+│   ├── gitee.py        # Gitee AI implementation (OpenAI-compatible API)
+│   └── astraflow.py    # AstraFlow (ModelVerse) implementation (multipart upload)
+└── utils/
+    ├── audio.py         # Audio file save utility
+    └── audio_cache.py   # Shared audio download/cache with retry
 ```
 
 - `main.py` — flat entry: delegates to `atri_indextts.cli:main`
 - `test.py` — legacy proof-of-concept (Gitee AI IndexTTS-2 direct call)
-- `tool.py` — empty placeholder
 
 ## CLI reference
 
 ```
-indextts tts <text> [-p provider] [-v voice] [-o output] [--prompt-audio URL] [--prompt-text TEXT]
+indextts tts <text> [-p provider] [-v voice] [-o output] [--prompt-audio URL] [--prompt-text TEXT] [--emo-audio URL] [--emo-alpha 0.5] [--emo-text TEXT] [--prompt-index N] [--stream]
 indextts voices [-p provider]
 indextts providers
 indextts config show
-indextts config set <key> <value>          # key = default_provider 或 <provider>.base_url
+indextts config set <key> <value>          # key = default_provider, output_dir, <provider>.base_url
+indextts voice add <name> --label STRING --prompt-audio URL --prompt-text TEXT [--description TEXT]
 ```
 
 ## Config
@@ -45,11 +52,10 @@ indextts config set <key> <value>          # key = default_provider 或 <provide
 
 ## Adding a new provider
 
-1. Create `src/atri_indextts/providers/<name>.py` extending `BaseTTSProvider`
-2. Register imports in `src/atri_indextts/providers/__init__.py`
+1. Create `src/atri_indextts/providers/<name>.py` extending `BaseTTSProvider` with `@register("<name>")` decorator
+2. Import the module in `src/atri_indextts/providers/__init__.py` (triggers registration)
 3. Add `ENV_KEY_MAP` entry in `src/atri_indextts/config.py`
-4. Add `_resolve_provider()` branch in `src/atri_indextts/cli.py`
-5. Add provider defaults to `DEFAULT_CONFIG` in `src/atri_indextts/config.py`
+4. Add provider defaults to `DEFAULT_CONFIG` in `src/atri_indextts/config.py`
 
 ## Gotchas
 
