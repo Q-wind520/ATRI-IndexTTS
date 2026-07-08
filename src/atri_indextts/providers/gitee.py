@@ -51,12 +51,6 @@ class GiteeProvider(BaseTTSProvider):
             extra_body["prompt_audio_url"] = prompt_audio
         if prompt_text:
             extra_body["prompt_text"] = prompt_text
-        if request.emo_audio:
-            extra_body["emo_audio"] = request.emo_audio
-        if request.emo_alpha is not None:
-            extra_body["emo_alpha"] = request.emo_alpha
-        if request.emo_text:
-            extra_body["emo_text"] = request.emo_text
 
         response = self._client.audio.speech.create(
             model=self.MODEL,

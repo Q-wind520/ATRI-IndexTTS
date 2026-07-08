@@ -1,5 +1,6 @@
 import re
 from collections.abc import Generator
+from datetime import datetime
 from pathlib import Path
 
 from .config import get_api_key, load_config, load_env, reload_config, save_config
@@ -39,10 +40,15 @@ class TTSService:
     def _get_output_path(self, output: str | None = None, fmt: str = "wav") -> str:
         if output is not None:
             return output
-        return str(
-            Path(self._config.get("output_dir", "temp/output"))
-            / f"indextts.{fmt}"
-        )
+        out_dir = Path(self._config.get("output_dir", "temp/output"))
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        for i in range(100):
+            name = f"{ts}_{i:02d}.{fmt}"
+            path = out_dir / name
+            if not path.exists():
+                return str(path)
+        return str(out_dir / f"{ts}_99.{fmt}")
 
     @staticmethod
     def _split_sentences(text: str) -> list[str]:
@@ -62,6 +68,8 @@ class TTSService:
         prompt_index: int = 0,
         fmt: str = "wav",
     ) -> TTSRequest:
+        if emo_text:
+            prompt_text = (prompt_text + " " + emo_text) if prompt_text else emo_text
         return TTSRequest(
             text=text,
             voice=voice,
